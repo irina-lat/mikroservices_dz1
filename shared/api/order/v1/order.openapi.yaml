@@ -1,0 +1,348 @@
+openapi: 3.0.3
+info:
+  title: Order Service API
+  description: API для управления заказами космических кораблей
+  version: 1.0.0
+  contact:
+    name: Oleg Kozyrev
+    email: oleg@example.com
+
+servers:
+  - url: /api/v1
+    description: API Gateway
+
+tags:
+  - name: orders
+    description: Управление заказами
+
+paths:
+  /orders:
+    post:
+      tags:
+        - orders
+      summary: Создание заказа
+      description: Создает новый заказ на основе выбранных деталей
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '200':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-ogen:
+        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
+        package: handlers
+        generate:
+          - server
+          - handler
+        handler: OrderHandler
+        method: CreateOrder
+
+  /orders/{order_uuid}:
+    get:
+      tags:
+        - orders
+      summary: Получение заказа по UUID
+      description: Возвращает информацию о заказе
+      operationId: getOrder
+      parameters:
+        - name: order_uuid
+          in: path
+          required: true
+          description: UUID заказа
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Заказ найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-ogen:
+        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
+        package: handlers
+        generate:
+          - server
+          - handler
+        handler: OrderHandler
+        method: GetOrder
+
+  /orders/{order_uuid}/pay:
+    post:
+      tags:
+        - orders
+      summary: Оплата заказа
+      description: Проводит оплату ранее созданного заказа
+      operationId: payOrder
+      parameters:
+        - name: order_uuid
+          in: path
+          required: true
+          description: UUID заказа
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayOrderRequest'
+      responses:
+        '200':
+          description: Оплата прошла успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-ogen:
+        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
+        package: handlers
+        generate:
+          - server
+          - handler
+        handler: OrderHandler
+        method: PayOrder
+
+  /orders/{order_uuid}/cancel:
+    post:
+      tags:
+        - orders
+      summary: Отмена заказа
+      description: Отменяет заказ, если он еще не оплачен
+      operationId: cancelOrder
+      parameters:
+        - name: order_uuid
+          in: path
+          required: true
+          description: UUID заказа
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Заказ успешно отменен
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-ogen:
+        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
+        package: handlers
+        generate:
+          - server
+          - handler
+        handler: OrderHandler
+        method: CancelOrder
+
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required:
+        - user_uuid
+        - part_uuids
+      properties:
+        user_uuid:
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        part_uuids:
+          type: array
+          description: Список UUID деталей
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          example:
+            - "123e4567-e89b-12d3-a456-426614174001"
+            - "123e4567-e89b-12d3-a456-426614174002"
+
+    CreateOrderResponse:
+      type: object
+      required:
+        - order_uuid
+        - total_price
+      properties:
+        order_uuid:
+          type: string
+          format: uuid
+          description: UUID созданного заказа
+          example: "123e4567-e89b-12d3-a456-426614174003"
+        total_price:
+          type: number
+          format: double
+          description: Общая стоимость заказа
+          example: 2999.99
+
+    PayOrderRequest:
+      type: object
+      required:
+        - payment_method
+      properties:
+        payment_method:
+          type: string
+          description: Способ оплаты
+          enum:
+            - CARD
+            - SBP
+            - CREDIT_CARD
+            - INVESTOR_MONEY
+          example: "CARD"
+
+    PayOrderResponse:
+      type: object
+      required:
+        - transaction_uuid
+      properties:
+        transaction_uuid:
+          type: string
+          format: uuid
+          description: UUID транзакции
+          example: "123e4567-e89b-12d3-a456-426614174004"
+
+    Order:
+      type: object
+      required:
+        - order_uuid
+        - user_uuid
+        - part_uuids
+        - total_price
+        - status
+      properties:
+        order_uuid:
+          type: string
+          format: uuid
+          description: UUID заказа
+          example: "123e4567-e89b-12d3-a456-426614174003"
+        user_uuid:
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        part_uuids:
+          type: array
+          description: Список UUID деталей
+          items:
+            type: string
+            format: uuid
+          example:
+            - "123e4567-e89b-12d3-a456-426614174001"
+            - "123e4567-e89b-12d3-a456-426614174002"
+        total_price:
+          type: number
+          format: double
+          description: Общая стоимость заказа
+          example: 2999.99
+        transaction_uuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID транзакции (если оплачен)
+          example: "123e4567-e89b-12d3-a456-426614174004"
+        payment_method:
+          type: string
+          nullable: true
+          description: Способ оплаты (если оплачен)
+          enum:
+            - CARD
+            - SBP
+            - CREDIT_CARD
+            - INVESTOR_MONEY
+          example: "CARD"
+        status:
+          type: string
+          description: Статус заказа
+          enum:
+            - PENDING_PAYMENT
+            - PAID
+            - CANCELLED
+          example: "PENDING_PAYMENT"
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Сообщение об ошибке
+                example: "Invalid request: user_uuid is required"
+              code:
+                type: string
+                example: "BAD_REQUEST"
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Сообщение об ошибке
+                example: "Order not found"
+              code:
+                type: string
+                example: "NOT_FOUND"
+    Conflict:
+      description: Конфликт операции
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Сообщение об ошибке
+                example: "Cannot cancel paid order"
+              code:
+                type: string
+                example: "CONFLICT"
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Сообщение об ошибке
+                example: "Internal server error"
+              code:
+                type: string
+                example: "INTERNAL_ERROR"
