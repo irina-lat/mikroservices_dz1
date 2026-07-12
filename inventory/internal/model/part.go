@@ -1,8 +1,6 @@
 package model
 
-import (
-	"time"
-)
+import "time"
 
 type Category int32
 
@@ -51,9 +49,9 @@ type Part struct {
 
 // PartsFilter для фильтрации
 type PartsFilter struct {
-	UUIDs               []string
-	Names               []string
-	Categories          []Category
+	UUIDs                []string
+	Names                []string
+	Categories           []Category
 	ManufacturerCountries []string
-	Tags                []string
+	Tags                 []string
 }
