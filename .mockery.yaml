@@ -1,0 +1,34 @@
+with-expecter: true
+mockname: "{{.InterfaceNameSnake}}"
+outpkg: "mocks"
+filename: "mock_{{.InterfaceNameSnake}}.go"
+packages:
+  order/internal/service/order:
+    config:
+      dir: order/internal/service/mocks
+    interfaces:
+      Service:
+      Repository:
+      InventoryClient:
+      PaymentClient:
+  order/internal/repository/order:
+    config:
+      dir: order/internal/repository/mocks
+    interfaces:
+      Repository:
+  inventory/internal/service/part:
+    config:
+      dir: inventory/internal/service/mocks
+    interfaces:
+      Service:
+      Repository:
+  inventory/internal/repository/part:
+    config:
+      dir: inventory/internal/repository/mocks
+    interfaces:
+      Repository:
+  payment/internal/service/payment:
+    config:
+      dir: payment/internal/service/mocks
+    interfaces:
+      Service:

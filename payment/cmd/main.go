@@ -4,19 +4,21 @@ import (
 	"log"
 	"net"
 
-	"payment/internal/handler"
-	"payment/internal/service"
-	pb "shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	apiv1 "github.com/irina-lat/microservices-course/payment/internal/api/payment/v1"
+	"github.com/irina-lat/microservices-course/payment/internal/service/payment"
+
+	pb "shared/pkg/proto/payment/v1"
 )
 
 func main() {
 	// 1. Создаём сервис
-	paymentService := service.NewPaymentService()
+	svc := payment.New()
 
-	// 2. Создаём gRPC хендлер
-	grpcHandler := handler.NewGrpcHandler(paymentService)
+	// 2. Создаём gRPC API
+	api := apiv1.NewAPI(svc)
 
 	// 3. Настраиваем gRPC сервер
 	lis, err := net.Listen("tcp", ":50052")
@@ -25,7 +27,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-	pb.RegisterPaymentServiceServer(grpcServer, grpcHandler)
+	pb.RegisterPaymentServiceServer(grpcServer, api)
 
 	// 4. Запускаем сервер
 	log.Println("PaymentService starting on :50052")
