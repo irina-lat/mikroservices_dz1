@@ -1,0 +1,23 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - revive
+
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+    - bin
+    - internal/repository/mocks
+    - internal/service/mocks
+    - shared/pkg/openapi
+    - shared/pkg/proto
