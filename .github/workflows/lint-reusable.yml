@@ -26,12 +26,24 @@ jobs:
         uses: actions/setup-go@v5.4.0
         with:
           go-version: ${{ inputs.go-version }}
+          cache: true
 
       - name: 🐾 Show go.work (debug)
         run: cat go.work || echo "❗ go.work not found"
 
       - name: 📌 Install Task
         uses: arduino/setup-task@v2.0.0
+
+      - name: 🔍 Debug project structure
+        run: |
+          echo "=== Go modules ==="
+          find . -name "go.mod" -type f | head -20
+          echo "=== go.work content ==="
+          cat go.work 2>/dev/null || echo "❗ go.work not found"
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Config file ==="
+          cat .golangci.yml 2>/dev/null || echo "❗ .golangci.yml not found"
 
       - name: ✅ Run golangci-lint via Taskfile
         env:
