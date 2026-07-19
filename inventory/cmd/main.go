@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -16,22 +18,39 @@ import (
 )
 
 func main() {
-	// 1. Создаём репозиторий
-	repo := part.NewInMemoryRepository()
-
-	// 2. Инициализируем тестовые данные
 	ctx := context.Background()
+
+	// 1. Подключаемся к MongoDB
+	uri := "mongodb://inventory-service-user:inventory-service-password@localhost:27017"
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+	defer client.Disconnect(ctx)
+
+	if err := client.Ping(ctx, nil); err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
+	}
+	log.Println("✅ Connected to MongoDB")
+
+	db := client.Database("inventory-service")
+
+	// 2. Создаём репозиторий (MongoDB)
+	repo := part.NewMongoRepository(db) // ← изменено с NewInMemoryRepository на NewMongoRepository
+
+	// 3. Инициализируем тестовые данные
+	log.Println("📦 Initializing sample data...")
 	if err := repo.InitSampleData(ctx); err != nil {
 		log.Printf("Warning: failed to init sample data: %v", err)
 	}
 
-	// 3. Создаём сервис
+	// 4. Создаём сервис
 	svc := partsvc.NewService(repo)
 
-	// 4. Создаём gRPC API
+	// 5. Создаём gRPC API
 	api := apiv1.NewAPI(svc)
 
-	// 5. Настраиваем gRPC сервер
+	// 6. Настраиваем gRPC сервер
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -40,8 +59,8 @@ func main() {
 	grpcServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	pb.RegisterInventoryServiceServer(grpcServer, api)
 
-	// 6. Запускаем сервер
-	log.Println("InventoryService starting on :50051")
+	// 7. Запускаем сервер
+	log.Println("🚀 InventoryService starting on :50051")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}

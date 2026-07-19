@@ -2,7 +2,11 @@ package part
 
 import (
 	"context"
-	"sync"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/irina-lat/microservices-course/inventory/internal/model"
 )
@@ -14,24 +18,30 @@ type Repository interface {
 	FindAll(ctx context.Context) ([]*model.Part, error)
 }
 
-// InMemoryRepository реализует Repository в памяти
-type InMemoryRepository struct {
-	mu    sync.RWMutex
-	parts map[string]*model.Part
+// MongoRepository реализует Repository для MongoDB
+type MongoRepository struct {
+	collection *mongo.Collection
 }
 
-// NewInMemoryRepository создаёт новый экземпляр репозитория
-func NewInMemoryRepository() *InMemoryRepository {
-	return &InMemoryRepository{
-		parts: make(map[string]*model.Part),
+// NewMongoRepository создаёт новый MongoDB репозиторий
+func NewMongoRepository(db *mongo.Database) *MongoRepository {
+	return &MongoRepository{
+		collection: db.Collection("parts"),
 	}
 }
 
-// Save сохраняет деталь в репозитории
-func (r *InMemoryRepository) Save(ctx context.Context, part *model.Part) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+// Save сохраняет деталь в MongoDB
+func (r *MongoRepository) Save(ctx context.Context, part *model.Part) error {
+	now := time.Now()
+	if part.CreatedAt.IsZero() {
+		part.CreatedAt = now
+	}
+	part.UpdatedAt = now
 
-	r.parts[part.UUID] = part
-	return nil
+	filter := bson.M{"uuid": part.UUID}
+	update := bson.M{"$set": part}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := r.collection.UpdateOne(ctx, filter, update, opts)
+	return err
 }
