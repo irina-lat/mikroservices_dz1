@@ -8,8 +8,8 @@ import (
 	"github.com/irina-lat/microservices-course/inventory/internal/model"
 )
 
-// InitSampleData заполняет репозиторий тестовыми данными
-func (r *InMemoryRepository) InitSampleData(ctx context.Context) error {
+// InitSampleData заполняет MongoDB тестовыми данными
+func (r *MongoRepository) InitSampleData(ctx context.Context) error {
 	now := time.Now()
 
 	sampleParts := []*model.Part{

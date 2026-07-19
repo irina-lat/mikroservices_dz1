@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/irina-lat/microservices-course/order/internal/model"
 )
@@ -22,5 +23,9 @@ func (s *OrderService) CancelOrder(ctx context.Context, orderUUID string) error 
 	// 3. Меняем статус на CANCELLED
 	order.Status = model.StatusCancelled
 
-	return s.repo.Update(ctx, order)
+	if err := s.repo.Update(ctx, order); err != nil {
+		return fmt.Errorf("failed to cancel order: %w", err)
+	}
+
+	return nil
 }

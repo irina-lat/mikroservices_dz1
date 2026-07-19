@@ -3,17 +3,22 @@ package part
 import (
 	"context"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/irina-lat/microservices-course/inventory/internal/model"
 )
 
-// FindAll возвращает все детали
-func (r *InMemoryRepository) FindAll(ctx context.Context) ([]*model.Part, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+// FindAll возвращает все детали из MongoDB
+func (r *MongoRepository) FindAll(ctx context.Context) ([]*model.Part, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
 
-	parts := make([]*model.Part, 0, len(r.parts))
-	for _, part := range r.parts {
-		parts = append(parts, part)
+	var parts []*model.Part
+	if err := cursor.All(ctx, &parts); err != nil {
+		return nil, err
 	}
 	return parts, nil
 }
