@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type OrderStatus string
 
 const (
@@ -26,4 +28,6 @@ type Order struct {
 	TransactionUUID *string        `json:"transaction_uuid,omitempty"`
 	PaymentMethod   *PaymentMethod `json:"payment_method,omitempty"`
 	Status          OrderStatus    `json:"status"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }

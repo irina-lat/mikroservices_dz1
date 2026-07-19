@@ -3,7 +3,7 @@ package order
 import (
 	"testing"
 
-	"github.com/irina-lat/microservices-course/order/internal/service/order/mocks"
+	"github.com/irina-lat/microservices-course/order/internal/service/mocks"
 
 	"github.com/stretchr/testify/suite"
 )

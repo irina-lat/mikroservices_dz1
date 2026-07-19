@@ -2,7 +2,8 @@ package order
 
 import (
 	"context"
-	"sync"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/irina-lat/microservices-course/order/internal/model"
 )
@@ -14,14 +15,12 @@ type Repository interface {
 	Update(ctx context.Context, order *model.Order) error
 }
 
-// InMemoryRepository реализует Repository в памяти
-type InMemoryRepository struct {
-	orders map[string]*model.Order
-	mu     sync.RWMutex
+// PostgresRepository реализует Repository для PostgreSQL
+type PostgresRepository struct {
+	db *pgxpool.Pool
 }
 
-func NewInMemoryRepository() *InMemoryRepository {
-	return &InMemoryRepository{
-		orders: make(map[string]*model.Order),
-	}
+// NewPostgresRepository создаёт новый PostgreSQL репозиторий
+func NewPostgresRepository(db *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{db: db}
 }
