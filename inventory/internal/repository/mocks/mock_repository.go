@@ -4,7 +4,7 @@ package mocks
 
 import (
 	context "context"
-	model "github.com/irina-lat/microservices-course/inventory/internal/model"
+	model "inventory/internal/model"
 
 	mock "github.com/stretchr/testify/mock"
 )

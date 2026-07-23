@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 // InitSampleData заполняет MongoDB тестовыми данными

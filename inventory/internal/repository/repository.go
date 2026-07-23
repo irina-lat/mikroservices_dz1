@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/irina-lat/microservices-course/inventory/internal/repository/part"
+	"inventory/internal/repository/part"
 )
 
 // PartRepository - алиас для интерфейса репозитория

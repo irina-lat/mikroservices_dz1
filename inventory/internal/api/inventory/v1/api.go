@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/irina-lat/microservices-course/inventory/internal/service/part"
+	"inventory/internal/service/part"
 	pb "shared/pkg/proto/inventory/v1"
 )
 

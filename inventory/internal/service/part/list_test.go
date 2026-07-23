@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 func (s *PartServiceTestSuite) TestListParts_All() {

@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 // Repository определяет интерфейс для работы с деталями

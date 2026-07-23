@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 // FindByUUID находит деталь по UUID в MongoDB

@@ -3,7 +3,7 @@ package part
 import (
 	"testing"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/repository/mocks"
+	"inventory/internal/repository/mocks"
 
 
 	"github.com/stretchr/testify/suite"

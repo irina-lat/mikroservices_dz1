@@ -3,7 +3,7 @@ package part
 import (
 	"context"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 func (s *PartServiceTestSuite) TestGetPart_Success() {
