@@ -3,7 +3,7 @@ package order
 import (
 	"context"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 )
 
 // GetOrder возвращает заказ по UUID

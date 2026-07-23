@@ -3,7 +3,7 @@
 package repository
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/repository/order"
+	"order/internal/repository/order"
 )
 
 // OrderRepository - алиас для интерфейса репозитория

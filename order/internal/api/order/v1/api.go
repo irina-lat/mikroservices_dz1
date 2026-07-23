@@ -1,8 +1,9 @@
 package v1
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/service/order"
 	orderapi "shared/pkg/openapi/order/v1"
+
+	"order/internal/service/order"
 )
 
 // API реализует HTTP хендлеры для OrderService

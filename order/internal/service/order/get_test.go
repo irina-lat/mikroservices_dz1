@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 
 	"github.com/google/uuid"
 )

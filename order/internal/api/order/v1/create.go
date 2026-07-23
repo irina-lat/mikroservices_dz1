@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 	orderapi "shared/pkg/openapi/order/v1"
 )
 
@@ -39,4 +39,3 @@ func (a *API) CreateOrder(ctx context.Context, req *orderapi.CreateOrderRequest)
 		TotalPrice: orderModel.TotalPrice,
 	}, nil
 }
-

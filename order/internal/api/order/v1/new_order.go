@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/service/order"
+	"order/internal/service/order"
 )
 
 // NewAPI создаёт новый экземпляр API

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 	orderapi "shared/pkg/openapi/order/v1"
 )
 
@@ -36,4 +36,3 @@ func (a *API) CancelOrder(ctx context.Context, params orderapi.CancelOrderParams
 
 	return &orderapi.CancelOrderNoContent{}, nil
 }
-

@@ -1,4 +1,4 @@
-module github.com/irina-lat/microservices-course/order
+module order
 
 go 1.25.7
 
@@ -7,7 +7,9 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/stretchr/testify v1.11.1
+	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
+	platform v0.0.0-00010101000000-000000000000
 	shared v0.0.0-00010101000000-000000000000
 )
 
@@ -39,7 +41,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.28.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -51,4 +52,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace shared => ../shared
+replace (
+	platform => ../platform
+	shared => ../shared
+)

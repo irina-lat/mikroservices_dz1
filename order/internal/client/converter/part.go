@@ -1,8 +1,9 @@
 package converter
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/model"
 	inventorypb "shared/pkg/proto/inventory/v1"
+
+	"order/internal/model"
 )
 
 // ProtoPartToModel конвертирует proto Part в модель Part
