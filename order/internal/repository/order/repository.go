@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 )
 
 // Repository определяет интерфейс для работы с заказами

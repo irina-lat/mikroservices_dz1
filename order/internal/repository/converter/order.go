@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/model"
-	repomodel "github.com/irina-lat/microservices-course/order/internal/repository/model"
+	"order/internal/model"
+	repomodel "order/internal/repository/model"
 )
 
 // ToRepoOrder конвертирует модель сервисного слоя в модель репозитория

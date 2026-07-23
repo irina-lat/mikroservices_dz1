@@ -3,8 +3,8 @@ package v1
 import (
 	"context"
 
-	"github.com/irina-lat/microservices-course/order/internal/client/converter"
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/client/converter"
+	"order/internal/model"
 	inventorypb "shared/pkg/proto/inventory/v1"
 )
 
@@ -15,7 +15,6 @@ func (c *InventoryClient) ListParts(ctx context.Context, partUUIDs []string) ([]
 			Uuids: partUUIDs,
 		},
 	})
-
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@ package converter
 import (
 	"time"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 	pb "shared/pkg/proto/inventory/v1"
 )
 

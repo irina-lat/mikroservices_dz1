@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
-	repomodel "github.com/irina-lat/microservices-course/inventory/internal/repository/model"
+	"inventory/internal/model"
+	repomodel "inventory/internal/repository/model"
 )
 
 func ToRepoPart(part *model.Part) *repomodel.Part {

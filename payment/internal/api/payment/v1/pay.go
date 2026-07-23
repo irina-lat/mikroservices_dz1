@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/irina-lat/microservices-course/payment/internal/model"
+	"payment/internal/model"
 	pb "shared/pkg/proto/payment/v1"
 )
 

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/irina-lat/microservices-course/inventory/internal/service/part"
+	"inventory/internal/service/part"
 )
 
 // PartService - алиас для интерфейса сервиса

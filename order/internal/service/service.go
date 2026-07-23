@@ -6,7 +6,7 @@
 package service
 
 import (
-	"github.com/irina-lat/microservices-course/order/internal/service/order"
+	"order/internal/service/order"
 )
 
 // OrderService - алиас для интерфейса сервиса

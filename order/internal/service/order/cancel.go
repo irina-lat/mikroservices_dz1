@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 )
 
 // CancelOrder отменяет заказ

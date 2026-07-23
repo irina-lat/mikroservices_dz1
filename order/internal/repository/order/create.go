@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 )
 
 func (r *PostgresRepository) Save(ctx context.Context, order *model.Order) error {

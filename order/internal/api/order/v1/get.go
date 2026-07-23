@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 	orderapi "shared/pkg/openapi/order/v1"
 )
 
@@ -58,4 +58,3 @@ func (a *API) convertToOrderResponse(order *model.Order) *orderapi.Order {
 
 	return resp
 }
-

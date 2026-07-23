@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/irina-lat/microservices-course/payment/internal/model"
+	"payment/internal/model"
 )
 
 // PayOrder обрабатывает оплату заказа

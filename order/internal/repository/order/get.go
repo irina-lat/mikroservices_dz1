@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/irina-lat/microservices-course/order/internal/model"
+	"order/internal/model"
 )
 
 // FindByUUID находит заказ по UUID в PostgreSQL

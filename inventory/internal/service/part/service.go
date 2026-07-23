@@ -3,7 +3,7 @@ package part
 import (
 	"context"
 
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/model"
 )
 
 // Service определяет интерфейс бизнес-логики для работы с деталями

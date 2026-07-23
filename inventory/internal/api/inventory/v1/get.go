@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/irina-lat/microservices-course/inventory/internal/converter"
-	"github.com/irina-lat/microservices-course/inventory/internal/model"
+	"inventory/internal/converter"
+	"inventory/internal/model"
 	pb "shared/pkg/proto/inventory/v1"
 )
 
