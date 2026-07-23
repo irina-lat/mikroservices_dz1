@@ -1,37 +1,27 @@
 package main
 
 import (
+	"context"
 	"log"
-	"net"
+	"os"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	apiv1 "github.com/irina-lat/microservices-course/payment/internal/api/payment/v1"
-	"github.com/irina-lat/microservices-course/payment/internal/service/payment"
-
-	pb "shared/pkg/proto/payment/v1"
+	"payment/internal/app"
+	"payment/internal/config"
 )
 
 func main() {
-	// 1. Создаём сервис
-	svc := payment.New()
-
-	// 2. Создаём gRPC API
-	api := apiv1.NewAPI(svc)
-
-	// 3. Настраиваем gRPC сервер
-	lis, err := net.Listen("tcp", ":50052")
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("load config: %v", err)
 	}
 
-	grpcServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-	pb.RegisterPaymentServiceServer(grpcServer, api)
+	app, err := app.New(cfg)
+	if err != nil {
+		log.Fatalf("create app: %v", err)
+	}
 
-	// 4. Запускаем сервер
-	log.Println("PaymentService starting on :50052")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	if err := app.Run(context.Background()); err != nil {
+		log.Printf("app error: %v", err)
+		os.Exit(1)
 	}
 }

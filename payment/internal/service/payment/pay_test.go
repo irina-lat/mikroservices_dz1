@@ -3,7 +3,7 @@ package payment
 import (
 	"context"
 
-	"github.com/irina-lat/microservices-course/payment/internal/model"
+	"payment/internal/model"
 )
 
 func (s *PaymentServiceTestSuite) TestPayOrder_Success() {

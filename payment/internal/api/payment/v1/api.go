@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/irina-lat/microservices-course/payment/internal/service/payment"
+	"payment/internal/service/payment"
 	pb "shared/pkg/proto/payment/v1"
 )
 
