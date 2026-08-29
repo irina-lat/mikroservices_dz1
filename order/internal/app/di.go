@@ -6,82 +6,128 @@ import (
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/IBM/sarama"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	apiv1 "order/internal/api/order/v1"
-	inventoryv1 "order/internal/client/grpc/inventory/v1"
-	paymentv1 "order/internal/client/grpc/payment/v1"
+	inventoryclient "order/internal/client/grpc/inventory/v1"
+	paymentclient "order/internal/client/grpc/payment/v1"
 	"order/internal/config"
 	"order/internal/migrator"
-	"order/internal/repository/order"
+	orderrepo "order/internal/repository/order"
+	orderconsumer "order/internal/service/consumer/order_consumer"
 	orderservice "order/internal/service/order"
+	orderproducer "order/internal/service/producer/order_producer"
+	"platform/pkg/kafka/consumer"
+	"platform/pkg/kafka/producer"
 	"platform/pkg/logger"
+	middleware "platform/pkg/middleware/kafka"
 	inventorypb "shared/pkg/proto/inventory/v1"
 	paymentpb "shared/pkg/proto/payment/v1"
 )
 
 type DI struct {
 	Config          *config.Config
-	Pool            *pgxpool.Pool
-	Repository      order.Repository
+	DB              *sql.DB
+	Repository      orderrepo.Repository
 	Service         orderservice.Service
 	API             *apiv1.API
 	GRPCServer      *grpc.Server
-	InventoryClient *inventoryv1.InventoryClient
-	PaymentClient   *paymentv1.PaymentClient
+	InventoryClient *inventoryclient.InventoryClient
+	PaymentClient   *paymentclient.PaymentClient
+	OrderProducer   *orderproducer.OrderProducer
+	OrderConsumer   *orderconsumer.OrderAssembledConsumer
 }
 
 func NewDI(cfg *config.Config) (*DI, error) {
-	if err := logger.Init(cfg.Logger.Level(), cfg.Logger.AsJSON()); err != nil {
-		return nil, fmt.Errorf("logger init: %w", err)
-	}
+	logger.Init(cfg.Logger.Level(), cfg.Logger.AsJSON())
 	log := logger.Logger()
+	ctx := context.Background()
 
 	di := &DI{Config: cfg}
 
-	pool, err := pgxpool.New(context.Background(), cfg.Postgres.DSN())
+	// 1. PostgreSQL
+	db, err := sql.Open("pgx", cfg.Postgres.DSN())
 	if err != nil {
-		return nil, fmt.Errorf("db pool: %w", err)
+		return nil, fmt.Errorf("db open: %w", err)
 	}
-	if err := pool.Ping(context.Background()); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("db ping: %w", err)
 	}
-	di.Pool = pool
-	log.Info(context.Background(), "Connected to PostgreSQL", zap.String("db", cfg.Postgres.Database()))
+	di.DB = db
+	log.Info(ctx, "Connected to PostgreSQL", zap.String("db", cfg.Postgres.Database()))
 
-	// Для миграций используем *sql.DB напрямую
-	sqlDB, err := sql.Open("pgx", cfg.Postgres.DSN())
-	if err != nil {
-		return nil, fmt.Errorf("sql open: %w", err)
+	// 2. Миграции
+	if err := migrator.Run(db); err != nil {
+		log.Warn(ctx, "migration failed", zap.Error(err))
 	}
-	if err := migrator.Run(sqlDB); err != nil {
-		log.Warn(context.Background(), "migration failed", zap.Error(err))
-	}
-	sqlDB.Close()
 
+	// 3. gRPC клиенты
 	inventoryConn, err := grpc.Dial(cfg.Inventory.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("inventory grpc dial: %w", err)
 	}
-	di.InventoryClient = inventoryv1.NewInventoryClient(inventorypb.NewInventoryServiceClient(inventoryConn))
+	di.InventoryClient = inventoryclient.NewInventoryClient(inventorypb.NewInventoryServiceClient(inventoryConn))
 
 	paymentConn, err := grpc.Dial(cfg.Payment.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("payment grpc dial: %w", err)
 	}
-	di.PaymentClient = paymentv1.NewPaymentClient(paymentpb.NewPaymentServiceClient(paymentConn))
+	di.PaymentClient = paymentclient.NewPaymentClient(paymentpb.NewPaymentServiceClient(paymentConn))
 
-	log.Info(context.Background(), "Connected to gRPC clients",
+	log.Info(ctx, "Connected to gRPC clients",
 		zap.String("inventory", cfg.Inventory.Address()),
 		zap.String("payment", cfg.Payment.Address()),
 	)
 
-	di.Repository = order.NewPostgresRepository(pool)
-	di.Service = orderservice.NewService(di.Repository, di.InventoryClient, di.PaymentClient)
+	// 4. Kafka Producer
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Producer.Return.Successes = true
+	saramaConfig.Producer.Return.Errors = true
+
+	syncProducer, err := sarama.NewSyncProducer(cfg.Kafka.Brokers(), saramaConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sync producer: %w", err)
+	}
+
+	kafkaProducer := producer.NewProducer(syncProducer, cfg.OrderPaidProducer.Topic(), log)
+	di.OrderProducer = orderproducer.NewOrderProducer(kafkaProducer, cfg.OrderPaidProducer.Topic())
+
+	// 5. Kafka Consumer
+	consumerGroup, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers(), cfg.OrderAssembledConsumer.ConsumerGroup(), saramaConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consumer group: %w", err)
+	}
+
+	kafkaConsumer := consumer.NewConsumer(
+		consumerGroup,
+		[]string{cfg.OrderAssembledConsumer.Topic()},
+		log,
+		middleware.Logging(log),
+	)
+
+	// 6. Репозиторий, Сервис, API
+	di.Repository = orderrepo.NewPostgresRepository(db)
+	di.Service = orderservice.NewService(
+		di.Repository,
+		di.InventoryClient,
+		di.PaymentClient,
+		di.OrderProducer,
+	)
 	di.API = apiv1.NewAPI(di.Service)
+
+	// 7. Consumer
+	di.OrderConsumer = orderconsumer.NewOrderAssembledConsumer(kafkaConsumer, di.Service)
+
+	log.Info(ctx, "OrderService DI initialized",
+		zap.Strings("kafka_brokers", cfg.Kafka.Brokers()),
+		zap.String("producer_topic", cfg.OrderPaidProducer.Topic()),
+		zap.String("consumer_topic", cfg.OrderAssembledConsumer.Topic()),
+	)
+
+	// 8. gRPC сервер (пока не используется)
 	di.GRPCServer = grpc.NewServer()
 
 	return di, nil

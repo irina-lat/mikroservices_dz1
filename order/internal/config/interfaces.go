@@ -35,3 +35,17 @@ type PostgresConfig interface {
 	Database() string
 	SSLMode() string
 }
+
+// Kafka конфиги
+type KafkaConfig interface {
+	Brokers() []string
+}
+
+type OrderPaidProducerConfig interface {
+	Topic() string
+}
+
+type OrderAssembledConsumerConfig interface {
+	Topic() string
+	ConsumerGroup() string
+}

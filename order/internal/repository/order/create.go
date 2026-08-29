@@ -8,6 +8,7 @@ import (
 	"order/internal/model"
 )
 
+// Save сохраняет заказ в PostgreSQL
 func (r *PostgresRepository) Save(ctx context.Context, order *model.Order) error {
 	query := `
 		INSERT INTO orders (
@@ -22,7 +23,7 @@ func (r *PostgresRepository) Save(ctx context.Context, order *model.Order) error
 	}
 
 	now := time.Now()
-	_, err = r.db.Exec(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		order.OrderUUID,
 		order.UserUUID,
 		partUUIDsJSON,

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-
 	"order/internal/config"
 	"platform/pkg/closer"
 	"platform/pkg/logger"
@@ -32,6 +31,15 @@ func New(cfg *config.Config) (*App, error) {
 func (a *App) Run(ctx context.Context) error {
 	log := logger.Logger()
 
+	// 1. Запускаем Kafka Consumer
+	go func() {
+		log.Info(ctx, "Starting OrderAssembled consumer...")
+		if err := a.di.OrderConsumer.Start(ctx); err != nil {
+			log.Error(ctx, "OrderAssembled consumer error", zap.Error(err))
+		}
+	}()
+
+	// 2. Создаём HTTP роутер
 	router, err := orderapi.NewServer(a.di.API)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
@@ -46,46 +54,46 @@ func (a *App) Run(ctx context.Context) error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	closer.Add(func(shutdownCtx context.Context) error {
-		log.Info(shutdownCtx, "Stopping HTTP server...")
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	closer.Add(func(ctx context.Context) error {
+		log.Info(ctx, "Stopping HTTP server...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return srv.Shutdown(ctx)
+		return srv.Shutdown(shutdownCtx)
 	})
 
 	go func() {
-		log.Info(context.Background(), "HTTP server started", zap.String("addr", addr))
+		log.Info(ctx, "HTTP server started", zap.String("addr", addr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error(context.Background(), "HTTP server error", zap.Error(err))
+			log.Error(ctx, "HTTP server error", zap.Error(err))
 		}
 	}()
 
-	return a.waitForShutdown()
+	return a.waitForShutdown(ctx)
 }
 
-func (a *App) waitForShutdown() error {
+func (a *App) waitForShutdown(ctx context.Context) error {
 	log := logger.Logger()
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
 	sig := <-ch
-	log.Info(context.Background(), "Received signal, shutting down...", zap.String("signal", sig.String()))
+	log.Info(ctx, "Received signal, shutting down...", zap.String("signal", sig.String()))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	done := make(chan struct{})
 	go func() {
-		closer.CloseAll(context.Background())
+		closer.CloseAll(shutdownCtx)
 		close(done)
 	}()
 
 	select {
-	case <-ctx.Done():
-		log.Warn(context.Background(), "Shutdown timeout")
-		return ctx.Err()
+	case <-shutdownCtx.Done():
+		log.Warn(ctx, "Shutdown timeout")
+		return shutdownCtx.Err()
 	case <-done:
-		log.Info(context.Background(), "Graceful shutdown complete")
+		log.Info(ctx, "Graceful shutdown complete")
 		return nil
 	}
 }

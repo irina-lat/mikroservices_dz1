@@ -38,7 +38,7 @@ func (r *PostgresRepository) Update(ctx context.Context, order *model.Order) err
 		paymentMethod = string(*order.PaymentMethod)
 	}
 
-	result, err := r.db.Exec(ctx, query,
+	result, err := r.db.ExecContext(ctx, query,
 		order.UserUUID,
 		partUUIDsJSON,
 		order.TotalPrice,
@@ -52,7 +52,10 @@ func (r *PostgresRepository) Update(ctx context.Context, order *model.Order) err
 		return err
 	}
 
-	rowsAffected := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rowsAffected == 0 {
 		return model.ErrOrderNotFound
 	}
