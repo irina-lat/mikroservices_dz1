@@ -7,11 +7,14 @@ import (
 )
 
 type Config struct {
-	Logger    *env.LoggerConfig
-	HTTP      *env.OrderHTTPConfig
-	Postgres  *env.PostgresConfig
-	Inventory *env.InventoryGRPCConfig
-	Payment   *env.PaymentGRPCConfig
+	Logger              *env.LoggerConfig
+	HTTP                *env.OrderHTTPConfig
+	Postgres            *env.PostgresConfig
+	Inventory           *env.InventoryGRPCConfig
+	Payment             *env.PaymentGRPCConfig
+	Kafka               *env.KafkaConfig
+	OrderPaidProducer   *env.OrderPaidProducerConfig
+	OrderAssembledConsumer *env.OrderAssembledConsumerConfig
 }
 
 func Load() (*Config, error) {
@@ -40,11 +43,29 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("load payment grpc: %w", err)
 	}
 
+	kafka, err := env.LoadKafkaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load kafka: %w", err)
+	}
+
+	producer, err := env.LoadOrderPaidProducerConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load order paid producer: %w", err)
+	}
+
+	consumer, err := env.LoadOrderAssembledConsumerConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load order assembled consumer: %w", err)
+	}
+
 	return &Config{
-		Logger:    logger,
-		HTTP:      http,
-		Postgres:  pg,
-		Inventory: inventory,
-		Payment:   payment,
+		Logger:              logger,
+		HTTP:                http,
+		Postgres:            pg,
+		Inventory:           inventory,
+		Payment:             payment,
+		Kafka:               kafka,
+		OrderPaidProducer:   producer,
+		OrderAssembledConsumer: consumer,
 	}, nil
 }

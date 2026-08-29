@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	"order/internal/model"
+	"platform/pkg/logger"
 )
 
-// PayOrder оплачивает заказ
+// PayOrder оплачивает заказ и отправляет событие OrderPaid в Kafka
 func (s *OrderService) PayOrder(ctx context.Context, orderUUID, paymentMethod string) (string, error) {
 	// 1. Находим заказ
 	order, err := s.repo.FindByUUID(ctx, orderUUID)
@@ -37,6 +39,14 @@ func (s *OrderService) PayOrder(ctx context.Context, orderUUID, paymentMethod st
 
 	if err := s.repo.Update(ctx, order); err != nil {
 		return "", fmt.Errorf("failed to update order: %w", err)
+	}
+
+	// 5. Отправляем событие OrderPaid в Kafka
+	if s.kafkaProducer != nil {
+		if err := s.kafkaProducer.SendOrderPaid(ctx, orderUUID, order.UserUUID, paymentMethod, transactionUUID); err != nil {
+			log := logger.Logger()
+			log.Error(ctx, "Failed to send OrderPaid event to Kafka", zap.Error(err))
+		}
 	}
 
 	return transactionUUID, nil

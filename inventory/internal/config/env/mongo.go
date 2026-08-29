@@ -16,39 +16,48 @@ type MongoConfig struct {
 }
 
 func LoadMongoConfig() (*MongoConfig, error) {
-	host := os.Getenv("MONGO_HOST")
+	// Используем переменные с префиксом INVENTORY_
+	host := os.Getenv("INVENTORY_MONGO_HOST")
 	if host == "" {
 		host = "localhost"
 	}
 
-	portStr := os.Getenv("MONGO_PORT")
-if portStr == "" {
+	portStr := os.Getenv("INVENTORY_MONGO_PORT")
+	if portStr == "" {
 		portStr = "27018"
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid MONGO_PORT: %w", err)
+		return nil, fmt.Errorf("invalid INVENTORY_MONGO_PORT: %w", err)
 	}
 
-	database := os.Getenv("MONGO_DATABASE")
+	database := os.Getenv("INVENTORY_MONGO_INITDB_DATABASE")
 	if database == "" {
 		database = "inventory"
 	}
 
-	authDB := os.Getenv("MONGO_AUTH_DB")
+	authDB := os.Getenv("INVENTORY_MONGO_AUTH_DB")
 	if authDB == "" {
 		authDB = "admin"
 	}
 
-	username := os.Getenv("MONGO_INITDB_ROOT_USERNAME")
+	username := os.Getenv("INVENTORY_MONGO_INITDB_ROOT_USERNAME")
 	if username == "" {
-		username = "inventory_admin"
+		username = "admin"
 	}
 
-	password := os.Getenv("MONGO_INITDB_ROOT_PASSWORD")
+	password := os.Getenv("INVENTORY_MONGO_INITDB_ROOT_PASSWORD")
 	if password == "" {
-		password = "inventory_secret"
+		password = "admin"
 	}
+
+	// Отладка: выводим значения
+	fmt.Printf("🔍 MONGO_HOST: %s\n", host)
+	fmt.Printf("🔍 MONGO_PORT: %d\n", port)
+	fmt.Printf("🔍 MONGO_DATABASE: %s\n", database)
+	fmt.Printf("🔍 MONGO_AUTH_DB: %s\n", authDB)
+	fmt.Printf("🔍 MONGO_USERNAME: %s\n", username)
+	fmt.Printf("🔍 MONGO_PASSWORD: %s\n", password)
 
 	return &MongoConfig{
 		host:     host,

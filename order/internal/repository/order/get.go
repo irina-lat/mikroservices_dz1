@@ -2,9 +2,8 @@ package order
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-
-	"github.com/jackc/pgx/v5"
 
 	"order/internal/model"
 )
@@ -21,10 +20,10 @@ func (r *PostgresRepository) FindByUUID(ctx context.Context, uuid string) (*mode
 
 	var order model.Order
 	var partUUIDsJSON []byte
-	var transactionUUID *string
-	var paymentMethod *string
+	var transactionUUID sql.NullString
+	var paymentMethod sql.NullString
 
-	err := r.db.QueryRow(ctx, query, uuid).Scan(
+	err := r.db.QueryRowContext(ctx, query, uuid).Scan(
 		&order.OrderUUID,
 		&order.UserUUID,
 		&partUUIDsJSON,
@@ -36,7 +35,7 @@ func (r *PostgresRepository) FindByUUID(ctx context.Context, uuid string) (*mode
 		&order.UpdatedAt,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			return nil, model.ErrOrderNotFound
 		}
 		return nil, err
@@ -47,11 +46,11 @@ func (r *PostgresRepository) FindByUUID(ctx context.Context, uuid string) (*mode
 		return nil, err
 	}
 
-	if transactionUUID != nil {
-		order.TransactionUUID = transactionUUID
+	if transactionUUID.Valid {
+		order.TransactionUUID = &transactionUUID.String
 	}
-	if paymentMethod != nil {
-		method := model.PaymentMethod(*paymentMethod)
+	if paymentMethod.Valid {
+		method := model.PaymentMethod(paymentMethod.String)
 		order.PaymentMethod = &method
 	}
 
