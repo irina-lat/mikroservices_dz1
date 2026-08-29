@@ -43,12 +43,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
       x-ogen:
-        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
-        package: handlers
+        target: order/internal/api/order/v1
+        package: v1
         generate:
           - server
           - handler
-        handler: OrderHandler
+        handler: API
         method: CreateOrder
 
   /orders/{order_uuid}:
@@ -78,12 +78,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
       x-ogen:
-        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
-        package: handlers
+        target: order/internal/api/order/v1
+        package: v1
         generate:
           - server
           - handler
-        handler: OrderHandler
+        handler: API
         method: GetOrder
 
   /orders/{order_uuid}/pay:
@@ -123,12 +123,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
       x-ogen:
-        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
-        package: handlers
+        target: order/internal/api/order/v1
+        package: v1
         generate:
           - server
           - handler
-        handler: OrderHandler
+        handler: API
         method: PayOrder
 
   /orders/{order_uuid}/cancel:
@@ -156,12 +156,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
       x-ogen:
-        target: github.com/olezhek28/microservices-course-olezhek-solution/order/internal/api/handlers
-        package: handlers
+        target: order/internal/api/order/v1
+        package: v1
         generate:
           - server
           - handler
-        handler: OrderHandler
+        handler: API
         method: CancelOrder
 
 components:
