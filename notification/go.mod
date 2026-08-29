@@ -8,6 +8,7 @@ replace shared => ../shared
 
 require (
 	github.com/IBM/sarama v1.60.2
+	github.com/joho/godotenv v1.5.1
 	go.uber.org/zap v1.28.0
 	platform v0.0.0-00010101000000-000000000000
 )

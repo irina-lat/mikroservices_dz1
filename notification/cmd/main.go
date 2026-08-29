@@ -5,11 +5,18 @@ import (
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
+
 	"notification/internal/app"
 	"notification/internal/config"
 )
 
 func main() {
+	// Загружаем .env файл
+	if err := godotenv.Load("../deploy/env/.env"); err != nil {
+		log.Println("⚠️ No .env file found, using system env")
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("load config: %v", err)

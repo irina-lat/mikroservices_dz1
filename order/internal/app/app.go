@@ -40,7 +40,7 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	// 2. Создаём HTTP роутер
-	router, err := orderapi.NewServer(a.di.API)
+	router, err := orderapi.NewServer(a.di.API, orderapi.WithPathPrefix("/api/v1"))
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}

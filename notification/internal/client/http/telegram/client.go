@@ -24,6 +24,9 @@ func NewClient(token, chatID string) *Client {
 		chatID: chatID,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+			},
 		},
 	}
 }
