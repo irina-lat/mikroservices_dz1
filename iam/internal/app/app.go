@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 
 	"iam/internal/config"
 	"platform/pkg/closer"
@@ -48,6 +49,9 @@ func (a *App) Run(ctx context.Context) error {
 	// Регистрируем сервисы
 	authv1.RegisterAuthServiceServer(grpcServer, a.di.AuthAPI)
 	userv1.RegisterUserServiceServer(grpcServer, a.di.UserAPI)
+
+	// Включаем reflection
+	reflection.Register(grpcServer)
 
 	closer.Add(func(ctx context.Context) error {
 		log.Info(ctx, "Stopping gRPC server...")

@@ -31,24 +31,22 @@ func New(cfg *config.Config) (*App, error) {
 func (a *App) Run(ctx context.Context) error {
 	log := logger.Logger()
 
-	// 1. Запускаем Kafka Consumer
-	go func() {
-		log.Info(ctx, "Starting OrderAssembled consumer...")
-		if err := a.di.OrderConsumer.Start(ctx); err != nil {
-			log.Error(ctx, "OrderAssembled consumer error", zap.Error(err))
-		}
-	}()
-
-	// 2. Создаём HTTP роутер
-	router, err := orderapi.NewServer(a.di.API, orderapi.WithPathPrefix("/api/v1"))
+	// 1. Создаём роутер с префиксом /api/v1
+	router, err := orderapi.NewServer(
+		a.di.API,
+		orderapi.WithPathPrefix("/api/v1"), // ← добавляем префикс
+	)
 	if err != nil {
 		return fmt.Errorf("router: %w", err)
 	}
 
+	// 2. Оборачиваем роутер в AuthMiddleware
+	handler := a.di.AuthMiddleware.Handle(router)
+
 	addr := a.di.Config.HTTP.Address()
 	srv := &http.Server{
 		Addr:         addr,
-		Handler:      router,
+		Handler:      handler,
 		ReadTimeout:  a.di.Config.HTTP.ReadTimeout(),
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -63,8 +61,21 @@ func (a *App) Run(ctx context.Context) error {
 
 	go func() {
 		log.Info(ctx, "HTTP server started", zap.String("addr", addr))
+		log.Info(ctx, "Available endpoints:")
+		log.Info(ctx, "  POST   /api/v1/orders")
+		log.Info(ctx, "  GET    /api/v1/orders/{order_uuid}")
+		log.Info(ctx, "  POST   /api/v1/orders/{order_uuid}/pay")
+		log.Info(ctx, "  POST   /api/v1/orders/{order_uuid}/cancel")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error(ctx, "HTTP server error", zap.Error(err))
+		}
+	}()
+
+	// 3. Запускаем Kafka Consumer
+	go func() {
+		log.Info(ctx, "Starting OrderAssembled consumer...")
+		if err := a.di.OrderConsumer.Start(ctx); err != nil {
+			log.Error(ctx, "OrderAssembled consumer error", zap.Error(err))
 		}
 	}()
 

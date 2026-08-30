@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/reflection"
+
 	"payment/internal/config"
 	"platform/pkg/closer"
 	"platform/pkg/logger"
@@ -35,6 +37,9 @@ func (a *App) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
+
+	// Включаем reflection
+	reflection.Register(a.di.GRPCServer)
 
 	closer.Add(func(ctx context.Context) error {
 		log.Info(ctx, "Stopping gRPC server...")

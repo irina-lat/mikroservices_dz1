@@ -5,11 +5,14 @@ import (
 
 	"order/internal/client/converter"
 	"order/internal/model"
+	"platform/pkg/middleware/grpc"
 	inventorypb "shared/pkg/proto/inventory/v1"
 )
 
-// ListParts возвращает список деталей по UUID
 func (c *InventoryClient) ListParts(ctx context.Context, partUUIDs []string) ([]*model.Part, error) {
+	// Передаём session-uuid в gRPC metadata
+	ctx = grpc.ForwardSessionUUIDToGRPC(ctx)
+
 	resp, err := c.client.ListParts(ctx, &inventorypb.ListPartsRequest{
 		Filter: &inventorypb.PartsFilter{
 			Uuids: partUUIDs,

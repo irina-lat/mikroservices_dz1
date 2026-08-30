@@ -16,6 +16,7 @@ type Repository interface {
 	Save(ctx context.Context, part *model.Part) error
 	FindByUUID(ctx context.Context, uuid string) (*model.Part, error)
 	FindAll(ctx context.Context) ([]*model.Part, error)
+	InitSampleData(ctx context.Context) error
 }
 
 // MongoRepository реализует Repository для MongoDB
