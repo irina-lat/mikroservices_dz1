@@ -6,33 +6,38 @@ import (
 	"inventory/internal/config/env"
 )
 
-// Config объединяет все конфигурации сервиса
 type Config struct {
-	GRPC    *env.InventoryGRPCConfig
-	Logger  *env.LoggerConfig
-	Mongo   *env.MongoConfig
+	Logger      *env.LoggerConfig
+	GRPC        *env.InventoryGRPCConfig
+	IAM         *env.IAMGRPCConfig
+	Mongo       *env.MongoConfig
 }
 
-// Load загружает все конфигурации из переменных окружения
 func Load() (*Config, error) {
-	grpcConfig, err := env.LoadInventoryGRPCConfig()
+	logger, err := env.LoadLoggerConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load gRPC config: %w", err)
+		return nil, fmt.Errorf("load logger: %w", err)
 	}
 
-	loggerConfig, err := env.LoadLoggerConfig()
+	grpc, err := env.LoadInventoryGRPCConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load logger config: %w", err)
+		return nil, fmt.Errorf("load grpc: %w", err)
 	}
 
-	mongoConfig, err := env.LoadMongoConfig()
+	iam, err := env.LoadIAMGRPCConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load mongo config: %w", err)
+		return nil, fmt.Errorf("load iam grpc: %w", err)
+	}
+
+	mongo, err := env.LoadMongoConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load mongo: %w", err)
 	}
 
 	return &Config{
-		GRPC:   grpcConfig,
-		Logger: loggerConfig,
-		Mongo:  mongoConfig,
+		Logger: logger,
+		GRPC:   grpc,
+		IAM:    iam,
+		Mongo:  mongo,
 	}, nil
 }

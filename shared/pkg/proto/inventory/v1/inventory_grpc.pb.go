@@ -155,6 +155,5 @@ var InventoryService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "github.com/irina-lat/microservices-course/inventory/v1/inventory.proto",
+	Metadata: "inventory/v1/inventory.proto",
 }
-

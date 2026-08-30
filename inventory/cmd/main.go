@@ -10,22 +10,18 @@ import (
 )
 
 func main() {
-	// 1. Загружаем конфигурацию
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("load config: %v", err)
 	}
 
-	// 2. Создаём приложение
-	application, err := app.New(cfg)
+	app, err := app.New(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create app: %v", err)
+		log.Fatalf("create app: %v", err)
 	}
 
-	// 3. Запускаем приложение
-	ctx := context.Background()
-	if err := application.Run(ctx); err != nil {
-		log.Printf("Application error: %v", err)
+	if err := app.Run(context.Background()); err != nil {
+		log.Printf("app error: %v", err)
 		os.Exit(1)
 	}
 }

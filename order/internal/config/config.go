@@ -12,6 +12,7 @@ type Config struct {
 	Postgres            *env.PostgresConfig
 	Inventory           *env.InventoryGRPCConfig
 	Payment             *env.PaymentGRPCConfig
+	IAM                 *env.IAMGRPCConfig
 	Kafka               *env.KafkaConfig
 	OrderPaidProducer   *env.OrderPaidProducerConfig
 	OrderAssembledConsumer *env.OrderAssembledConsumerConfig
@@ -43,6 +44,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("load payment grpc: %w", err)
 	}
 
+	iam, err := env.LoadIAMGRPCConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load iam grpc: %w", err)
+	}
+
 	kafka, err := env.LoadKafkaConfig()
 	if err != nil {
 		return nil, fmt.Errorf("load kafka: %w", err)
@@ -64,6 +70,7 @@ func Load() (*Config, error) {
 		Postgres:            pg,
 		Inventory:           inventory,
 		Payment:             payment,
+		IAM:                 iam,
 		Kafka:               kafka,
 		OrderPaidProducer:   producer,
 		OrderAssembledConsumer: consumer,

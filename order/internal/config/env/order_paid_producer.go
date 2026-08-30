@@ -11,7 +11,7 @@ type OrderPaidProducerConfig struct {
 func LoadOrderPaidProducerConfig() (*OrderPaidProducerConfig, error) {
 	topic := os.Getenv("ORDER_ORDER_PAID_TOPIC_NAME")
 	if topic == "" {
-		topic = "order-paid"
+		topic = "order.paid"
 	}
 
 	return &OrderPaidProducerConfig{

@@ -13,145 +13,71 @@ import (
 	apiv1 "inventory/internal/api/inventory/v1"
 	"inventory/internal/config"
 	"inventory/internal/repository/part"
-	partsvc "inventory/internal/service/part"
-
-	"platform/pkg/closer"
+	partservice "inventory/internal/service/part"
 	"platform/pkg/logger"
+	grpcAuth "platform/pkg/middleware/grpc"
+	authpb "shared/pkg/proto/auth/v1"
 	pb "shared/pkg/proto/inventory/v1"
 )
 
-// DI контейнер для InventoryService
 type DI struct {
 	Config     *config.Config
-	Logger     closer.Logger
 	MongoDB    *mongo.Database
 	Repository part.Repository
-	Service    partsvc.Service
+	Service    partservice.Service
 	API        *apiv1.API
 	GRPCServer *grpc.Server
 }
 
-// NewDI инициализирует все зависимости
 func NewDI(cfg *config.Config) (*DI, error) {
-	di := &DI{
-		Config: cfg,
-	}
-
-	// 1. Инициализируем логгер
-	if err := di.initLogger(); err != nil {
-		return nil, fmt.Errorf("failed to init logger: %w", err)
-	}
-
-	// 2. Инициализируем MongoDB
-	if err := di.initMongoDB(); err != nil {
-		return nil, fmt.Errorf("failed to init MongoDB: %w", err)
-	}
-
-	// 3. Инициализируем репозиторий
-	di.initRepository()
-
-	// 4. Инициализируем тестовые данные
-	if err := di.initSampleData(); err != nil {
-		di.Logger.Error(context.Background(), "Failed to init sample data", zap.Error(err))
-	}
-
-	// 5. Инициализируем сервис
-	di.initService()
-
-	// 6. Инициализируем API
-	di.initAPI()
-
-	// 7. Инициализируем gRPC сервер
-	di.initGRPCServer()
-
-	return di, nil
-}
-
-// initLogger инициализирует логгер
-func (d *DI) initLogger() error {
-	loggerCfg := d.Config.Logger
-	if err := logger.Init(loggerCfg.Level(), loggerCfg.AsJSON()); err != nil {
-		return err
-	}
-	d.Logger = logger.Logger()
-	return nil
-}
-
-// initMongoDB инициализирует подключение к MongoDB
-func (d *DI) initMongoDB() error {
+	logger.Init(cfg.Logger.Level(), cfg.Logger.AsJSON())
+	log := logger.Logger()
 	ctx := context.Background()
-	mongoCfg := d.Config.Mongo
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoCfg.URI()))
+	di := &DI{Config: cfg}
+
+	// 1. MongoDB
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.Mongo.URI()))
 	if err != nil {
-		return fmt.Errorf("failed to connect to MongoDB: %w", err)
+		return nil, fmt.Errorf("mongo connect: %w", err)
 	}
-
 	if err := client.Ping(ctx, nil); err != nil {
-		return fmt.Errorf("failed to ping MongoDB: %w", err)
+		return nil, fmt.Errorf("mongo ping: %w", err)
+	}
+	di.MongoDB = client.Database(cfg.Mongo.Database())
+	log.Info(ctx, "Connected to MongoDB", zap.String("db", cfg.Mongo.Database()))
+
+	// 2. Репозиторий
+	repo := part.NewMongoRepository(di.MongoDB)
+	di.Repository = repo
+
+	// 3. Инициализация тестовых данных
+	if err := repo.InitSampleData(ctx); err != nil {
+		log.Warn(ctx, "failed to init sample data", zap.Error(err))
 	}
 
-	d.MongoDB = client.Database(mongoCfg.Database())
-	d.Logger.Info(ctx, "Connected to MongoDB",
-		zap.String("database", mongoCfg.Database()),
-		zap.String("host", mongoCfg.Host()),
-	)
-	return nil
-}
+	// 4. Сервис
+	di.Service = partservice.NewService(di.Repository)
 
-// initRepository инициализирует репозиторий
-func (d *DI) initRepository() {
-	d.Repository = part.NewMongoRepository(d.MongoDB)
-}
+	// 5. API
+	di.API = apiv1.NewAPI(di.Service)
 
-// initSampleData инициализирует тестовые данные
-func (d *DI) initSampleData() error {
-	ctx := context.Background()
-	
-	// Проверяем, есть ли уже данные
-	parts, err := d.Repository.FindAll(ctx)
+	// 6. IAM клиент
+	iamConn, err := grpc.Dial(cfg.IAM.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("iam grpc dial: %w", err)
 	}
-	
-	if len(parts) > 0 {
-		d.Logger.Info(ctx, "Sample data already exists, skipping initialization")
-		return nil
-	}
+	iamClient := authpb.NewAuthServiceClient(iamConn)
 
-	d.Logger.Info(ctx, "Initializing sample data...")
-	
-	// Получаем репозиторий с методом InitSampleData
-	repoWithInit, ok := d.Repository.(interface {
-		InitSampleData(ctx context.Context) error
-	})
-	if !ok {
-		return nil
-	}
-	
-	if err := repoWithInit.InitSampleData(ctx); err != nil {
-		return err
-	}
-	
-	d.Logger.Info(ctx, "Sample data initialized successfully")
-	return nil
-}
+	// 7. Auth interceptor
+	authInterceptor := grpcAuth.NewAuthInterceptor(iamClient)
 
-// initService инициализирует сервисный слой
-func (d *DI) initService() {
-	d.Service = partsvc.NewService(d.Repository)
-}
-
-// initAPI инициализирует gRPC API
-func (d *DI) initAPI() {
-	d.API = apiv1.NewAPI(d.Service)
-}
-
-// initGRPCServer инициализирует gRPC сервер
-func (d *DI) initGRPCServer() {
-	d.GRPCServer = grpc.NewServer(
-		grpc.Creds(insecure.NewCredentials()),
+	// 8. gRPC сервер с interceptor и регистрацией
+	di.GRPCServer = grpc.NewServer(
+		grpc.UnaryInterceptor(authInterceptor.Unary()),
 	)
-	// Регистрируем сервис
-	pb.RegisterInventoryServiceServer(d.GRPCServer, d.API)
+	pb.RegisterInventoryServiceServer(di.GRPCServer, di.API)
+
+	log.Info(ctx, "InventoryService DI initialized")
+	return di, nil
 }

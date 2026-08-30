@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "shared/pkg/proto/common/v1";
+
+message UserInfo {
+  string login = 1;
+  string email = 2;
+}
+
+message User {
+  string uuid = 1;
+  UserInfo info = 2;
+  string created_at = 3;
+  string updated_at = 4;
+}

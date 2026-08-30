@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -15,7 +16,6 @@ import (
 	inventoryclient "order/internal/client/grpc/inventory/v1"
 	paymentclient "order/internal/client/grpc/payment/v1"
 	"order/internal/config"
-	"order/internal/migrator"
 	orderrepo "order/internal/repository/order"
 	orderconsumer "order/internal/service/consumer/order_consumer"
 	orderservice "order/internal/service/order"
@@ -23,10 +23,16 @@ import (
 	"platform/pkg/kafka/consumer"
 	"platform/pkg/kafka/producer"
 	"platform/pkg/logger"
+	"platform/pkg/middleware/http"
 	middleware "platform/pkg/middleware/kafka"
+	"platform/pkg/migrator/pg"
+	authpb "shared/pkg/proto/auth/v1"
 	inventorypb "shared/pkg/proto/inventory/v1"
 	paymentpb "shared/pkg/proto/payment/v1"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 type DI struct {
 	Config          *config.Config
@@ -39,6 +45,7 @@ type DI struct {
 	PaymentClient   *paymentclient.PaymentClient
 	OrderProducer   *orderproducer.OrderProducer
 	OrderConsumer   *orderconsumer.OrderAssembledConsumer
+	AuthMiddleware  *http.AuthMiddleware
 }
 
 func NewDI(cfg *config.Config) (*DI, error) {
@@ -60,11 +67,23 @@ func NewDI(cfg *config.Config) (*DI, error) {
 	log.Info(ctx, "Connected to PostgreSQL", zap.String("db", cfg.Postgres.Database()))
 
 	// 2. Миграции
-	if err := migrator.Run(db); err != nil {
-		log.Warn(ctx, "migration failed", zap.Error(err))
+	m := pg.New(db, migrationsFS, "migrations")
+	if err := m.Up(ctx); err != nil {
+		return nil, fmt.Errorf("migrations up: %w", err)
 	}
+	log.Info(ctx, "Migrations applied successfully")
 
-	// 3. gRPC клиенты
+	// 3. IAM клиент
+	iamConn, err := grpc.Dial(cfg.IAM.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("iam grpc dial: %w", err)
+	}
+	iamClient := authpb.NewAuthServiceClient(iamConn)
+
+	// 4. Auth middleware
+	di.AuthMiddleware = http.NewAuthMiddleware(iamClient)
+
+	// 5. gRPC клиенты
 	inventoryConn, err := grpc.Dial(cfg.Inventory.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("inventory grpc dial: %w", err)
@@ -82,7 +101,7 @@ func NewDI(cfg *config.Config) (*DI, error) {
 		zap.String("payment", cfg.Payment.Address()),
 	)
 
-	// 4. Kafka Producer
+	// 6. Kafka Producer
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 	saramaConfig.Producer.Return.Errors = true
@@ -95,7 +114,7 @@ func NewDI(cfg *config.Config) (*DI, error) {
 	kafkaProducer := producer.NewProducer(syncProducer, cfg.OrderPaidProducer.Topic(), log)
 	di.OrderProducer = orderproducer.NewOrderProducer(kafkaProducer, cfg.OrderPaidProducer.Topic())
 
-	// 5. Kafka Consumer
+	// 7. Kafka Consumer
 	consumerGroup, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers(), cfg.OrderAssembledConsumer.ConsumerGroup(), saramaConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer group: %w", err)
@@ -108,7 +127,7 @@ func NewDI(cfg *config.Config) (*DI, error) {
 		middleware.Logging(log),
 	)
 
-	// 6. Репозиторий, Сервис, API
+	// 8. Репозиторий, Сервис, API
 	di.Repository = orderrepo.NewPostgresRepository(db)
 	di.Service = orderservice.NewService(
 		di.Repository,
@@ -118,7 +137,7 @@ func NewDI(cfg *config.Config) (*DI, error) {
 	)
 	di.API = apiv1.NewAPI(di.Service)
 
-	// 7. Consumer
+	// 9. Consumer
 	di.OrderConsumer = orderconsumer.NewOrderAssembledConsumer(kafkaConsumer, di.Service)
 
 	log.Info(ctx, "OrderService DI initialized",
@@ -127,7 +146,7 @@ func NewDI(cfg *config.Config) (*DI, error) {
 		zap.String("consumer_topic", cfg.OrderAssembledConsumer.Topic()),
 	)
 
-	// 8. gRPC сервер (пока не используется)
+	// 10. gRPC сервер (пока не используется)
 	di.GRPCServer = grpc.NewServer()
 
 	return di, nil

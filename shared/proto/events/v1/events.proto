@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "shared/pkg/proto/events/v1";
+
+// OrderPaidEvent — событие об оплате заказа
+// Отправляется OrderService → AssemblyService, NotificationService
+message OrderPaidEvent {
+  string event_uuid = 1;        // Уникальный идентификатор события
+  string order_uuid = 2;        // Идентификатор оплаченного заказа
+  string user_uuid = 3;         // Идентификатор пользователя
+  string payment_method = 4;    // Способ оплаты (CARD, SBP, ...)
+  string transaction_uuid = 5;  // Идентификатор транзакции
+}
+
+// ShipAssembledEvent — событие о сборке заказа
+// Отправляется AssemblyService → OrderService, NotificationService
+message ShipAssembledEvent {
+  string event_uuid = 1;        // Уникальный идентификатор события
+  string order_uuid = 2;        // Идентификатор собранного заказа
+  string user_uuid = 3;         // Идентификатор пользователя
+  int64 build_time_sec = 4;     // Время сборки в секундах
+}

@@ -12,7 +12,7 @@ type OrderPaidConsumerConfig struct {
 func LoadOrderPaidConsumerConfig() (*OrderPaidConsumerConfig, error) {
 	topic := os.Getenv("ASSEMBLY_KAFKA_ORDER_PAID_TOPIC")
 	if topic == "" {
-		topic = "order-paid"
+		topic = "order.paid"
 	}
 
 	consumerGroup := os.Getenv("ASSEMBLY_KAFKA_CONSUMER_GROUP")
