@@ -117,6 +117,5 @@ var PaymentService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "github.com/irina-lat/microservices-course/payment/v1/payment.proto",
+	Metadata: "payment/v1/payment.proto",
 }
-

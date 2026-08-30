@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -15,7 +16,6 @@ import (
 	inventoryclient "order/internal/client/grpc/inventory/v1"
 	paymentclient "order/internal/client/grpc/payment/v1"
 	"order/internal/config"
-	"order/internal/migrator"
 	orderrepo "order/internal/repository/order"
 	orderconsumer "order/internal/service/consumer/order_consumer"
 	orderservice "order/internal/service/order"
@@ -24,9 +24,13 @@ import (
 	"platform/pkg/kafka/producer"
 	"platform/pkg/logger"
 	middleware "platform/pkg/middleware/kafka"
+	"platform/pkg/migrator/pg"
 	inventorypb "shared/pkg/proto/inventory/v1"
 	paymentpb "shared/pkg/proto/payment/v1"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 type DI struct {
 	Config          *config.Config
@@ -59,10 +63,12 @@ func NewDI(cfg *config.Config) (*DI, error) {
 	di.DB = db
 	log.Info(ctx, "Connected to PostgreSQL", zap.String("db", cfg.Postgres.Database()))
 
-	// 2. Миграции
-	if err := migrator.Run(db); err != nil {
-		log.Warn(ctx, "migration failed", zap.Error(err))
+	// 2. Миграции через platform
+	m := pg.New(db, migrationsFS, "migrations")
+	if err := m.Up(ctx); err != nil {
+		return nil, fmt.Errorf("migrations up: %w", err)
 	}
+	log.Info(ctx, "Migrations applied successfully")
 
 	// 3. gRPC клиенты
 	inventoryConn, err := grpc.Dial(cfg.Inventory.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))

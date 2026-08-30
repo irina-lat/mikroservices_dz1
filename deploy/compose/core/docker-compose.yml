@@ -1,5 +1,4 @@
 services: # Раздел, в котором описываются все контейнеры общей инфраструктуры для всех микросервисов
-
   kafka: # Сервис Kafka
     image: confluentinc/cp-kafka:7.9.0 # Образ Kafka от компании Confluent, версия 7.9.0 (современная, с поддержкой KRaft)
     container_name: kafka # Явное имя контейнера, чтобы легче обращаться к нему
@@ -7,7 +6,7 @@ services: # Раздел, в котором описываются все кон
       - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}" # Пробрасываем порт ${KAFKA_EXTERNAL_PORT} наружу — для доступа с хост-машины. Через этот порт будем подключаться клиентами с локального компьютера.
 
     env_file:
-      - ../../env/.env
+      - .env
 
     environment: # Список переменных окружения для конфигурации Kafka
       # === Основные параметры KRaft (Kafka без Zookeeper) ===
@@ -98,7 +97,7 @@ services: # Раздел, в котором описываются все кон
       # Пробрасываем порт веб-интерфейса на хост-машину.
 
     env_file:
-      - ../../env/.env
+      - .env
 
     environment:
       KAFKA_CLUSTERS_0_NAME: "local-cluster"
