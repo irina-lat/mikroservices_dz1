@@ -1,139 +1,238 @@
-services: # Раздел, в котором описываются все контейнеры общей инфраструктуры для всех микросервисов
-  kafka: # Сервис Kafka
-    image: confluentinc/cp-kafka:7.9.0 # Образ Kafka от компании Confluent, версия 7.9.0 (современная, с поддержкой KRaft)
-    container_name: kafka # Явное имя контейнера, чтобы легче обращаться к нему
+services:
+
+  # ================================================================
+  # KAFKA
+  # ================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka
     ports:
-      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}" # Пробрасываем порт ${KAFKA_EXTERNAL_PORT} наружу — для доступа с хост-машины. Через этот порт будем подключаться клиентами с локального компьютера.
-
+      - "${CORE_KAFKA_EXTERNAL_PORT}:${CORE_KAFKA_EXTERNAL_PORT}"
     env_file:
-      - .env
-
-    environment: # Список переменных окружения для конфигурации Kafka
-      # === Основные параметры KRaft (Kafka без Zookeeper) ===
-      KAFKA_KRAFT_MODE: "true" # Включаем работу в режиме KRaft (Kafka Raft Metadata Mode), без ZooKeeper.
-
-      KAFKA_PROCESS_ROLES: controller,broker # Роль текущего процесса: одновременно controller (управляет metadata) и broker (обрабатывает сообщения).
-
-      KAFKA_NODE_ID: 1 # Уникальный идентификатор ноды в кластере Kafka. В кластере должно быть уникальным для каждой ноды.
-
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:${KAFKA_CONTROLLER_PORT}"
-      # Указываем список участников controller quorum для Raft —
-      # в формате "ID@адрес:порт". У нас один узел: ID=1, адрес kafka, порт ${KAFKA_CONTROLLER_PORT}.
-      # Это необходимо для распределённого консенсуса Kafka Metadata.
-
-      # === Listeners (слушатели сети) ===
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
-      # Настраиваем, на каких интерфейсах и портах Kafka будет слушать подключения.
-      # - PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT} — внутренний listener для контейнерной сети Docker.
-      # - PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT} — внешний listener для подключения с локальной машины.
-      # - CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT} — служебный listener для связи контроллера и брокера внутри Kafka.
-
+      - ../../env/.env
+    environment:
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:${CORE_KAFKA_CONTROLLER_PORT}"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${CORE_KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://0.0.0.0:${CORE_KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${CORE_KAFKA_CONTROLLER_PORT}
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-      # Определяем, какие протоколы безопасности используются для каждого listener.
-      # В данном случае все listener'ы используют незашифрованный PLAINTEXT (для локальной разработки).
-
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      # Указываем, какой listener используется для связи между брокерами (у нас один broker, но указать нужно).
-      # PLAINTEXT — это внутренний listener на ${KAFKA_INTERNAL_PORT}.
-
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      # Указываем, какой listener Kafka будет использовать для связи с controller (служебный трафик Raft).
-
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://localhost:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
-      # Важно! Kafka сообщает клиентам, по каким адресам её можно найти.
-      # - Внутри Docker сети Kafka объявляет адрес kafka:${KAFKA_INTERNAL_PORT}.
-      # - Для подключения с хоста Kafka объявляет localhost:${KAFKA_EXTERNAL_PORT}.
-      # - Контроллеру Kafka сообщает адрес kafka:${KAFKA_CONTROLLER_PORT}.
-
-      # === Поведение кластера ===
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${CORE_KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://localhost:${CORE_KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${CORE_KAFKA_CONTROLLER_PORT}
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # Позволяет Kafka автоматически создавать топики при их первом использовании.
-
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # Количество реплик для системного топика offset'ов (у нас один брокер, поэтому 1).
-
       KAFKA_LOG_RETENTION_HOURS: 168
-      # Хранить сообщения в топиках 168 часов (7 дней).
-
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      # Устанавливаем задержку перед начальной балансировкой consumer group в 0 мс (ускоряем старт).
-
       CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"
-      # Уникальный идентификатор кластера Kafka.
-
     volumes:
       - kafka_data:/var/lib/kafka/data
-      # Подключаем volume для хранения данных Kafka (логи и сообщения).
-      # Это позволяет сохранять данные между перезапусками контейнера.
-
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bash",
-          "-c",
-          "echo > /dev/tcp/localhost/${KAFKA_INTERNAL_PORT}",
-        ]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/${CORE_KAFKA_INTERNAL_PORT}"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
-      # Проверяем, доступен ли порт ${KAFKA_INTERNAL_PORT} внутри контейнера.
-      # Если порт недоступен — Kafka считается неготовой.
-      # start_period: 20s — ждём 20 секунд перед началом проверки.
-
     restart: unless-stopped
-    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
-
     networks:
       - microservices-net
-      # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
 
-  kafka-ui: # Веб-интерфейс Kafka UI для управления брокером и топиками.
+  # ================================================================
+  # KAFKA UI
+  # ================================================================
+  kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
     ports:
-      - "${KAFKA_UI_PORT}:8080"
-      # Пробрасываем порт веб-интерфейса на хост-машину.
-
+      - "${CORE_KAFKA_UI_PORT}:8080"
     env_file:
-      - .env
-
+      - ../../env/.env
     environment:
       KAFKA_CLUSTERS_0_NAME: "local-cluster"
-      # Имя кластера, которое отобразится в UI.
-
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:${KAFKA_INTERNAL_PORT}"
-      # Адрес Kafka брокера внутри контейнерной сети для подключения UI.
-
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:${CORE_KAFKA_INTERNAL_PORT}"
     depends_on:
       kafka:
         condition: service_healthy
-      # Гарантируем, что Kafka UI стартует только после того, как Kafka станет healthy.
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
-      # Проверяем состояние UI по HTTP endpoint /actuator/health.
-      # UI будет считаться healthy только после успешного ответа от сервера.
-
     restart: unless-stopped
-    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
-
     networks:
       - microservices-net
-      # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
 
-volumes: # Раздел с определением томов
-  kafka_data: # Именованный том для хранения данных Kafka
-  # Docker сам управляет этим хранилищем, данные сохраняются между перезапусками контейнеров.
+  # ================================================================
+  # OPENTELEMETRY COLLECTOR
+  # ================================================================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel/collector.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "${CORE_OTEL_GRPC_PORT}:4317"
+      - "${CORE_OTEL_HTTP_PORT}:4318"
+      - "${CORE_OTEL_METRICS_PORT}:8888"
+    restart: unless-stopped
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:${CORE_OTEL_METRICS_PORT}/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - microservices-net
 
+  # ================================================================
+  # JAEGER
+  # ================================================================
+  jaeger:
+    image: jaegertracing/jaeger:2.6.0
+    container_name: jaeger
+    ports:
+      - "${CORE_JAEGER_UI_PORT}:16686"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=false
+      - BADGER_DIRECTORY_VALUE=/badger/data
+      - BADGER_DIRECTORY_KEY=/badger/key
+    volumes:
+      - jaeger_data:/badger/data
+      - jaeger_key:/badger/key
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:${CORE_JAEGER_UI_PORT}"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - microservices-net
+
+  # ================================================================
+  # PROMETHEUS
+  # ================================================================
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: prometheus
+    ports:
+      - "${CORE_PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - microservices-net
+
+  # ================================================================
+  # GRAFANA
+  # ================================================================
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: grafana
+    ports:
+      - "${CORE_GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${CORE_GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${CORE_GRAFANA_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - microservices-net
+
+  # ================================================================
+  # ELASTICSEARCH
+  # ================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${CORE_ELASTICSEARCH_VERSION}
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "${CORE_ELASTICSEARCH_PORT}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?local=true"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - microservices-net
+
+  # ================================================================
+  # KIBANA
+  # ================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${CORE_ELASTICSEARCH_VERSION}
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${CORE_KIBANA_PORT}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - microservices-net
+
+# ================================================================
+# VOLUMES
+# ================================================================
+volumes:
+  kafka_data:
+  jaeger_data:
+  jaeger_key:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+
+# ================================================================
+# NETWORKS
+# ================================================================
 networks:
   microservices-net:
     name: microservices-net
     external: false
-    # ВАЖНО: здесь мы создаём сеть с именем microservices-net
-    # Другие docker-compose файлы будут к ней подключаться с external: true
